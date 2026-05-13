@@ -1,0 +1,10 @@
+models:
+  code-fast: gpt-4.1-mini
+  code-strong: gpt-4.1
+  reasoning: o3
+
+team_keys:
+  team_eric_xxx:
+    user: eric
+  team_dev_xxx:
+    user: dev
