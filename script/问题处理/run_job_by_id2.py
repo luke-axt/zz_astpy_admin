@@ -1,5 +1,3 @@
-import sys
-sys.path.append(r"D:\app\astpy")
 from ETL.ods.OrangeConnexOdsJob import OrangeConnexOdsJob
 from task.JobCore import JobCore
 
@@ -39,7 +37,8 @@ from task.JobCore import JobCore
 # res = JobCore().run_job(jobid=228, hour_cal=13)  # 领星多平台订单小时批
 # res = JobCore().run_job(jobid=164)  # 同步xbb订单到领星
 # res = JobCore().run_job(jobid=228)  # 多平台订单
-res = JobCore().run_job(jobid=263)  # 临时
+res = JobCore().run_job(jobid=270)  # 临时
+# res = JobCore().run_job(jobid=243,start_date='2026-01-25',end_date='2026-03-10')
 
 print(f"{res}")
 

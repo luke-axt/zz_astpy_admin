@@ -6,7 +6,7 @@ from utils.LogUtils import LogUtils
 
 logger = LogUtils.get_logger('维护改款sku映射')
 
-dbs = DBcore(('192.168.1.80'
+dbs = DBcore(('192.168.1.79'
                 , '3306'
                 , 'dba'
                 , 'gAAAAABn43OY3qU_OEKerxmpJuXBQthVlZdhkyxEy2yd8Dh1Y-z0rG6IYKlHt1_MCkwbGKVGDp2ZOpjT5_t_sQoop6lWiAwHTw=='
@@ -15,15 +15,11 @@ dbs = DBcore(('192.168.1.80'
 
 
 oldskustr = """
-DY-T3-AUXITO-SY-A
-DY-T4-AUXITO-SY-A
-DY-T5-AUXITO-SY
+DY-ATO-JS02-AUTOONE-BB-B
 """
 
 newskustr="""
-DY-T3-AUXITO-SY-B
-DY-T4-AUXITO-SY-B
-DY-T5-AUXITO-SY-A
+DY-ATO-JS02-AUTOONE-BB-C
 """
 
 old_sku_list = oldskustr.split('\n')
@@ -48,8 +44,9 @@ while i<len(old_sku_list):
     if oldsku != '':
         sku_list.append({'oldsku':oldsku,'newsku':newsku})
 
+logger.info(f"检查结束，无异常，正式执行-------------------------------------------------------------")
 
-
+i = 0
 for item in sku_list:
     try:
         logger.info(f"{item['oldsku']} -->> {item['newsku']}")
@@ -59,7 +56,9 @@ for item in sku_list:
         insert_sql = f"INSERT INTO plan.plan_sku_map (ttsku, cur_ttsku, update_time, status) VALUES('{item['oldsku']}', '{item['newsku']}', now(), 'Y');"
         res = dbs.insert(insert_sql)
         logger.info(f"insert - {res}")
+        i += 1
     except:
         logger.error(traceback.format_exc())
         exit(1)
 
+logger.info(f"全部处理完成，共处理 {i} 个改款sku，请核对。")

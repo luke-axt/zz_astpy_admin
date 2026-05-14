@@ -40,11 +40,11 @@ from task.JobCore import JobCore
 
 # print(f"{JobCore().run_job(jobid=88)}")
 # print(f"{JobCore().run_job(jobid=65)}")
-joblist = [176,177,178,179] # 采购计划 175 pcrq1   176 pcrq2
+joblist = [175,176,177,178,179]
 # joblist = [55,64,165,86,167]  # 重跑dml_sale_salevol
 # joblist = [202,203,207,204,205,206,212,]  # 重跑头程固化，要按照顺序执行
-# joblist = [218,221,]  # 销帮帮合同、销帮帮客户
-# joblist = [131,151,185,218,]  # 临时
+# joblist = [218,214,226,]  # 销帮帮合同、销帮帮客户
+# joblist = [117,131]  # 临时
 job_core = JobCore()
 for jobid in joblist:
     print(f"开始运行作业：{jobid}-----------------------------------")

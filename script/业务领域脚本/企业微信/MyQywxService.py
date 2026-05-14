@@ -31,10 +31,6 @@ class MyQywxService:
 
     def api_sent_msg_to_user(self,msg,userid='ZhengCiLin'):
         action = "https://qyapi.weixin.qq.com/cgi-bin/message/send"
-        if userid == 'ZhengCiLin':
-            to_user_list = f"ZhengCiLin"
-        else:
-            to_user_list = f"ZhengCiLin|{userid}"
         json_param = {
                       "touser": to_user_list,
                       "msgtype": "text",
@@ -120,8 +116,10 @@ select t1.qywx_id
 
 请先登录系统修改初始密码，已初步分配使用权限，后续使用遇到问题再按需调整。            
 """
-            self.qywx.api_sent_msg_to_user(qw_userid,msg)
+            self.qywx.api_sent_msg_to_user(msg,qw_userid)
 
         a = 1
 
+
+# QywxImportData('通知用户领星初始密码').notice_lx_user_info()
 

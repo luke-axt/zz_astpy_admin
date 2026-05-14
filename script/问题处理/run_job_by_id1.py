@@ -36,7 +36,7 @@ from task.JobCore import JobCore
 # res = JobCore().run_job(jobid=228, hour_cal=13)  # 领星多平台订单小时批
 # res = JobCore().run_job(jobid=164)  # 同步xbb订单到领星
 # res = JobCore().run_job(jobid=228)  # 多平台订单
-res = JobCore().run_job(jobid=19)  # 临时
+res = JobCore().run_job(jobid=70)  # 临时
 
 print(f"{res}")
 
