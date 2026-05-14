@@ -1,5 +1,13 @@
+/log/
+/.idea/
+/.vscode/
+/*venv/
+# 忽略所有 .pyc 文件
 *.pyc
-script/Manage/信息安全/__pycache__/DatabaseGrant.cpython-311.pyc
-script/Manage/信息安全/__pycache__/DatabaseGrant.cpython-311.pyc
-script/业务领域脚本/企业微信/__pycache__/MyQywxService.cpython-311.pyc
-script/Manage/信息安全/__pycache__/DatabaseGrant.cpython-311.pyc
+
+# (可选) 忽略 __pycache__ 目录 (Python 3 通常将 .pyc 放在这里)
+__pycache__/
+
+# (可选) 忽略所有 .pyo 和 .pyd 文件
+*.pyo
+*.pyd
