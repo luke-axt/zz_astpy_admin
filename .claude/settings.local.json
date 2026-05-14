@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import app.main; print\\('OK'\\)\")",
+      "Bash(curl *)",
+      "Bash(sqlite3 *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
