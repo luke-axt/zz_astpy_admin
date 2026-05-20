@@ -5,7 +5,7 @@ from admin.service.AdminService import AdminService
 from common.ResultObj import ResultObj
 from utils.ExcelUtil import ExcelUtil
 from utils.dateutil import DatePack
-from 运维管理.MyAdmin import MyAdminBase
+from zzlc.script.MyAdmin import MyAdminBase
 
 class MyQywxService:
 

@@ -1,12 +1,12 @@
 import sys
 sys.path.insert(0, r"D:\app\astpy")
 
-from zzlc.UserCore import UserCore
+from zzlc.script.UserCore import UserCore
 
 # email 为None的话，会生成一个 user_code@sztyqcypyxgs.wecom.work 的邮箱
 # 部门名称：IT;财务;ebay;亚马逊;SWOT;独立站;采购;计划;设计部;外贸;物流;仓库;
 u_str_list = """
-王美美|外贸|17777777777|17777777777@no.com
+赖全明|设计部|17777777777|17777777777@no.com
 """
 userlist = []
 for item in u_str_list.split('\n'):

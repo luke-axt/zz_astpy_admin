@@ -3,14 +3,14 @@ sys.path.append(r"D:\app\astpy")
 
 
 
-from 运维管理.业务领域脚本.企业微信.MyQywxService import MyQywxService, QywxImportData
+from zzlc.script.业务领域脚本.企业微信.MyQywxService import MyQywxService, QywxImportData
 from ETL.ods.ToogtoolOds.TtPurchaseOrder import ImportTtPurchaseOrder
-from 运维管理.MyAdmin import MyAdminBase
+from zzlc.script.MyAdmin import MyAdminBase
 from rpa.common.RefreshAmzPrivAstdcJob import RefreshAmzPrivAstdcJob
 
 class TestUnit(MyAdminBase):
 
-    def __init__(self,jobname='IT视图授权'):
+    def __init__(self,jobname='test'):
         super().__init__(jobname)
     
 

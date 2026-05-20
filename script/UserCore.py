@@ -8,7 +8,7 @@ from admin.service.adminconfig import AdminConfig
 from utils.StringUtils import StringUtils
 import random
 
-from zzlc.MyAdmin import MyAdminBase
+from zzlc.script.MyAdmin import MyAdminBase
 
 
 class User:
