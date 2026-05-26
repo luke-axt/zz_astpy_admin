@@ -8,6 +8,8 @@
 测试脚本写在同目录下的 test.py
 
 
+python -m venv venv
+venv\Scripts\Activate.ps1
  pip install -r a.priv_serv\test_gateway\requirements.txt
  cd .\a.priv_serv\test_gateway\
  uvicorn main:app --host 0.0.0.0 --port 8000
