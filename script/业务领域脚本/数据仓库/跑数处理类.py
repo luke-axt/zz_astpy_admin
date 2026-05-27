@@ -3,8 +3,8 @@ import traceback
 from common.ResultObj import ResultObj
 from dwd.DwService import DwService
 from utils.dateutil import DatePack
-from 运维管理.MyAdmin import MyAdminBase
-from 运维管理.业务领域脚本.企业微信.MyQywxService import MyQywxService
+from zzlc.script.MyAdmin import MyAdminBase
+from zzlc.script.业务领域脚本.企业微信.MyQywxService import MyQywxService
 
 
 class RunDataHis(MyAdminBase):
@@ -69,3 +69,45 @@ WHERE dt=%s;
         else:
             self.qywx.api_sent_msg_to_user(f"正常完成：RunDataHis.run_sale_idx，{msg_text}")
 
+    def run_dml_sale(self, taskname, start_dt, stop_dt):
+        """
+
+        start_dt: YYYY-MM-DD
+        stop_dt: YYYY-MM-DD
+
+        """
+
+        msg_text = f"{taskname}，跑批时间：{start_dt} - {stop_dt}"
+        self.logger.info(msg_text)
+
+        res = ResultObj.success()
+
+        dt = start_dt
+        while dt <= stop_dt:
+            try:
+                paramJson = f"""[{{"format":"{{dt}}","value":"{dt}"}}]"""
+                res = DwService('dml').run_job('dml_sale_salevol', paramJson)
+            except:
+                res = ResultObj.error(ResultObj.FATAL_ERROR, traceback.format_exc())
+
+            if res.is_fail():
+                break
+            self.logger.info(f"dml_sale_salevol - {dt} - 正常完成")
+
+            paramJson = f"""[{{"format":"{{order_dt}}","value":"{dt}"}}]"""
+            try:
+                res = DwService('dml').run_job('dml_sale_order_info', paramJson)
+            except:
+                res = ResultObj.error(ResultObj.FATAL_ERROR, traceback.format_exc())
+            
+            if res.is_fail():
+                break
+            self.logger.info(f"dml_sale_order_info - {dt} - 正常完成")
+
+            dt = DatePack.parseDatetime2Str(DatePack.addDays(DatePack.parseStr2Datetime(dt, DatePack.YYYY_MM_DD), 1),
+                                            DatePack.YYYY_MM_DD)
+
+        if res.is_fail():
+            self.qywx.api_sent_msg_to_user(f"，跑批异常，请及时处理。RunDataHis：{msg_text}")
+        else:
+            self.qywx.api_sent_msg_to_user(f"正常完成：RunDataHis：{msg_text}")
