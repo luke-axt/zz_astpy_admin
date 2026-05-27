@@ -1,7 +1,7 @@
 import sys
 sys.path.append(r"D:\app\astpy")
 
-from zzlc.script.MyAdmin import MyAdminBase
+from rpa.RpaAdmin import RpaAdmin
 from utils.BrowserUtils import BrowserUtils
 
 import time
@@ -15,12 +15,11 @@ from common.ResultObj import ResultObj
 
 
 
-class RpaDelLxBundleProductJob(MyAdminBase):
+class RpaDelLxBundleProductJob(RpaAdmin):
     """
 帮我在这个类中实现如下功能。你不用扫描项目，这是一个完全独立的一次性功能，只能基类有关系，其他项目目录可以不用看。
 1. 数据来源：读取excel文档 D:\data\需删除捆绑产品清单.xlsx，文档只有一列，列名：bsku。
 2. 要操作的url地址：https://auxito.lingxing.com/erp/bundledProductManage
-3. 页面登录：打开浏览器输入网址之后，调用这个方法wait_confirm等待我确认就行，如需登录我就手工登录。
 4. 初始化动作
 4.1 检查是否在目标页面：
 检查这个元素是否存在：
@@ -87,16 +86,50 @@ d. 点击搜索按钮
         super().__init__(jobname)
         self.jobname = jobname
 
+    def init_browser(self,browser):
+        """
+        """
+        browser.get("https://auxito.lingxing.com/erp/bundledProductManage")
+
+        # 等待 30 秒让用户完成登录
+        time.sleep(30)
+
+        wait = WebDriverWait(browser, 15)
+
+        # 4.1 检查是否在目标页面（通过"添加捆绑产品"按钮判断）
+        try:
+            wait.until(EC.presence_of_element_located(
+                (By.XPATH, "//button[.//span[contains(text(), '添加捆绑产品')]]")
+            ))
+            self.logger.info("[OK] 已确认在捆绑产品管理页面")
+        except Exception:
+            self.logger.info("[FAIL] 30 秒后仍未检测到目标页面，请检查登录是否成功")
+            return ResultObj.error(ResultObj.EXT_SYS_ERROR, "30 秒后仍未检测到目标页面")
+
+        # 4.2 检查分页，如果不是 200 条/页则切换
+        pagination_input = browser.find_element(By.CSS_SELECTOR, ".el-pagination__sizes input")
+        current_val = pagination_input.get_attribute("value") or ""
+        if "200" not in current_val:
+            pagination_input.click()
+            time.sleep(0.5)
+            option_200 = wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//li[contains(., '200条/页')]")
+            ))
+            option_200.click()
+            time.sleep(1)
+            self.logger.info("[OK] 分页已调整为 200 条/页")
+        else:
+            self.logger.info("[OK] 分页已经是 200 条/页")
     
     def action(self, **kwargs):
         excel_path = r"D:\data\需删除捆绑产品清单.xlsx"
         df = pd.read_excel(excel_path)
         sku_list = df['bsku'].dropna().astype(str).str.strip().tolist()
         if not sku_list:
-            print("Excel 中没有读取到有效的 bsku 数据")
+            self.logger.info("Excel 中没有读取到有效的 bsku 数据")
             return ResultObj.error(ResultObj.EXT_SYS_ERROR, "Excel 中没有读取到有效的 bsku 数据")
         batches = [sku_list[i:i + 200] for i in range(0, len(sku_list), 200)]
-        print(f"共读取 {len(sku_list)} 个 SKU，分成 {len(batches)} 批处理")
+        self.logger.info(f"共读取 {len(sku_list)} 个 SKU，分成 {len(batches)} 批处理")
 
         browser = None
         try:
@@ -104,40 +137,42 @@ d. 点击搜索按钮
                 chromdatapath=self.admin.getChromeUserPath(f'{self.__class__.__name__}.action')
             )
             if code != 0:
-                print(f"打开浏览器失败：{msg}")
+                self.logger.info(f"打开浏览器失败：{msg}")
                 return ResultObj.error(ResultObj.EXT_SYS_ERROR, f"打开浏览器失败：{msg}")
-
-            browser.get("https://auxito.lingxing.com/erp/bundledProductManage")
-
-            # 等待 30 秒让用户完成登录
-            time.sleep(30)
-
+            
             wait = WebDriverWait(browser, 15)
+            self.init_browser(browser=browser)
+            # browser.get("https://auxito.lingxing.com/erp/bundledProductManage")
 
-            # 4.1 检查是否在目标页面（通过"添加捆绑产品"按钮判断）
-            try:
-                wait.until(EC.presence_of_element_located(
-                    (By.XPATH, "//button[.//span[contains(text(), '添加捆绑产品')]]")
-                ))
-                print("[OK] 已确认在捆绑产品管理页面")
-            except Exception:
-                print("[FAIL] 30 秒后仍未检测到目标页面，请检查登录是否成功")
-                return ResultObj.error(ResultObj.EXT_SYS_ERROR, "30 秒后仍未检测到目标页面")
+            # # 等待 30 秒让用户完成登录
+            # time.sleep(30)
 
-            # 4.2 检查分页，如果不是 200 条/页则切换
-            pagination_input = browser.find_element(By.CSS_SELECTOR, ".el-pagination__sizes input")
-            current_val = pagination_input.get_attribute("value") or ""
-            if "200" not in current_val:
-                pagination_input.click()
-                time.sleep(0.5)
-                option_200 = wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//li[contains(., '200条/页')]")
-                ))
-                option_200.click()
-                time.sleep(1)
-                print("[OK] 分页已调整为 200 条/页")
-            else:
-                print("[OK] 分页已经是 200 条/页")
+            # wait = WebDriverWait(browser, 15)
+
+            # # 4.1 检查是否在目标页面（通过"添加捆绑产品"按钮判断）
+            # try:
+            #     wait.until(EC.presence_of_element_located(
+            #         (By.XPATH, "//button[.//span[contains(text(), '添加捆绑产品')]]")
+            #     ))
+            #     self.logger.info("[OK] 已确认在捆绑产品管理页面")
+            # except Exception:
+            #     self.logger.info("[FAIL] 30 秒后仍未检测到目标页面，请检查登录是否成功")
+            #     return ResultObj.error(ResultObj.EXT_SYS_ERROR, "30 秒后仍未检测到目标页面")
+
+            # # 4.2 检查分页，如果不是 200 条/页则切换
+            # pagination_input = browser.find_element(By.CSS_SELECTOR, ".el-pagination__sizes input")
+            # current_val = pagination_input.get_attribute("value") or ""
+            # if "200" not in current_val:
+            #     pagination_input.click()
+            #     time.sleep(0.5)
+            #     option_200 = wait.until(EC.element_to_be_clickable(
+            #         (By.XPATH, "//li[contains(., '200条/页')]")
+            #     ))
+            #     option_200.click()
+            #     time.sleep(1)
+            #     self.logger.info("[OK] 分页已调整为 200 条/页")
+            # else:
+            #     self.logger.info("[OK] 分页已经是 200 条/页")
 
             success_count = 0
             fail_count = 0
@@ -145,7 +180,7 @@ d. 点击搜索按钮
             fail_details = []
 
             for batch_idx, batch in enumerate(batches, start=1):
-                print(f"\n[BATCH] 正在处理第 {batch_idx}/{len(batches)} 批，共 {len(batch)} 个 SKU...")
+                self.logger.info(f"[BATCH] 正在处理第 {batch_idx}/{len(batches)} 批，共 {len(batch)} 个 SKU...")
                 try:
                     # 5.2 清空筛选条件
                     filter_section = browser.find_element(By.CSS_SELECTOR, ".filter-section")
@@ -190,11 +225,11 @@ d. 点击搜索按钮
                     total_text = total_el.text or ""
                     m = re.search(r'共(\d+)条', total_text)
                     total = int(m.group(1)) if m else 0
-                    print(f"   搜索结果：{total_text}")
+                    self.logger.info(f"   搜索结果：{total_text}")
 
                     if total <= 0 or total > 200:
                         no_match_count += 1
-                        print(f"   [WARN] 搜索结果为 {total}，不在 1-200 范围内，跳过本批")
+                        self.logger.info(f"   [WARN] 搜索结果为 {total}，不在 1-200 范围内，跳过本批")
                         continue
 
                     # 5.5 删除动作
@@ -212,37 +247,40 @@ d. 点击搜索按钮
                     )
                     confirm_del_btn.click()
 
-                    WebDriverWait(browser, 10).until(
+                    WebDriverWait(browser, 120).until(
                         lambda d: "共0条" in d.find_element(By.CSS_SELECTOR, ".el-pagination__total").text
                     )
                     success_count += 1
-                    print("   [OK] 删除成功")
+                    self.logger.info("   [OK] 删除成功")
 
                 except Exception as e:
                     fail_count += 1
-                    detail = f"第 {batch_idx} 批: {str(e)}"
+                    detail = f"第 {batch_idx} 批: {traceback.format_exc()}"
                     fail_details.append(detail)
-                    print(f"   [FAIL] {detail}")
-                    time.sleep(1)
+                    self.logger.info(f"   [FAIL] {detail}")
+                    browser.refresh()
+                    time.sleep(10)
+                    self.init_browser(browser=browser)
+                    
 
             # 6. 汇总报告
-            print("\n" + "=" * 40)
-            print("[SUMMARY] 处理完成")
-            print(f"   成功：{success_count} 批")
-            print(f"   失败：{fail_count} 批")
-            print(f"   无匹配：{no_match_count} 批")
+            self.logger.info("\n" + "=" * 40)
+            self.logger.info("[SUMMARY] 处理完成")
+            self.logger.info(f"   成功：{success_count} 批")
+            self.logger.info(f"   失败：{fail_count} 批")
+            self.logger.info(f"   无匹配：{no_match_count} 批")
             if fail_details:
-                print("   失败详情：")
+                self.logger.info("   失败详情：")
                 for d in fail_details:
-                    print(f"      - {d}")
-            print("=" * 40)
+                    self.logger.info(f"      - {d}")
+            self.logger.info("=" * 40)
 
             return ResultObj.success(
                 f"处理完成：成功 {success_count} 批，失败 {fail_count} 批，无匹配 {no_match_count} 批"
             )
 
         finally:
-            print("\n[WAIT] 等待用户确认后关闭浏览器...")
+            self.logger.info("\n[WAIT] 等待用户确认后关闭浏览器...")
             self.wait_confirm()
             if browser:
                 try:
@@ -261,10 +299,10 @@ d. 点击搜索按钮
         
         # 空（直接回车）或者 Y 都通过
         if user_input == "" or user_input == "Y":
-            print("[OK] 确认通过，继续执行...")
+            self.logger.info("[OK] 确认通过，继续执行...")
             return True
         else:
-            print("[FAIL] 取消执行")
+            self.logger.info("[FAIL] 取消执行")
             return False
 
 
