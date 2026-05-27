@@ -32,7 +32,7 @@ class MyQywxService:
     def api_sent_msg_to_user(self,msg,userid='ZhengCiLin'):
         action = "https://qyapi.weixin.qq.com/cgi-bin/message/send"
         json_param = {
-                      "touser": to_user_list,
+                      "touser": userid,
                       "msgtype": "text",
                       "agentid": 1000022,
                       "text": {
