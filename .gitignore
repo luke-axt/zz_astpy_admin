@@ -11,4 +11,3 @@ __pycache__/
 # (可选) 忽略所有 .pyo 和 .pyd 文件
 *.pyo
 *.pyd
-*.pyc
