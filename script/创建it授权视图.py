@@ -5,7 +5,8 @@ sys.path.append(r"D:\app\astpy")
 import traceback
 
 table_list_str = """
-plan.pl_stock_param_adjust_day
+astdc.qywx_user_info
+astdc.qywx_user_map
 """
 from zzlc.script.Manage.信息安全.DatabaseGrant import DBPrivGrant
 

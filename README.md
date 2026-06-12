@@ -9,3 +9,4 @@ mklink /J [target_dir] [proj_dir]\zz_astpy_admin
 
 参考：
 mklink /J D:\app\astpy\zzlc D:\code\py\zz_astpy_admin
+mklink /J D:\code\shopify\shopify_auxito\zzlc D:\code\py\zz_astpy_admin

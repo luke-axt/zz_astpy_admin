@@ -65,12 +65,21 @@ class LingxingShopAssigner:
     def assign_user_shops(self, task: AssignTask) -> None:
         self.search_user(task.name)
         row = self.ensure_single_exact_row(task.name)
+        print(f"[DEBUG] found row, text={row.text.strip()[:60]!r}")
         self.select_row(row)
+        print("[DEBUG] row selected")
         self.open_assign_shop_dialog()
+        print("[DEBUG] dialog opened")
+        self.choose_override_option()
+        print("[DEBUG] override option chosen")
         self.choose_ebay_tab()
+        print("[DEBUG] ebay tab chosen")
         self.select_authorized_shops(task.shops)
+        print("[DEBUG] shops selected")
         self.confirm_dialog()
+        print("[DEBUG] dialog confirmed")
         self.wait_dialog_closed()
+        print("[DEBUG] dialog closed")
 
     def search_user(self, name: str) -> None:
         # Compatible with different Lingxing page variants.
@@ -123,47 +132,84 @@ class LingxingShopAssigner:
 
     def ensure_single_exact_row(self, target_name: str):
         rows = self._get_table_rows()
-        if len(rows) != 1:
-            raise RuntimeError(f"Search result count is not 1, actual: {len(rows)}")
+        # 页面上可能有多个 table（如弹窗、菜单），直接过滤出包含目标姓名的行
+        matching_rows = []
+        for row in rows:
+            name_cell = self._find_name_cell(row)
+            row_name = name_cell.text.strip() if name_cell is not None else row.text.strip().split("\n")[0]
+            row_text = row.text.strip()
+            if row_name == target_name or target_name in row_text:
+                matching_rows.append(row)
 
-        name_cell = self._find_name_cell(rows[0])
-        row_name = name_cell.text.strip() if name_cell is not None else rows[0].text.strip().split("\n")[0]
-        row_text = rows[0].text.strip()
-        if row_name != target_name and target_name not in row_text:
-            raise RuntimeError(f"Matched user name mismatch, expected: {target_name}, actual: {row_name}")
-        return rows[0]
+        if len(matching_rows) != 1:
+            raise RuntimeError(
+                f"Search result count is not 1, actual: {len(rows)} "
+                f"(matched {len(matching_rows)} for '{target_name}')"
+            )
+        return matching_rows[0]
+
+    # def select_row(self, row) -> None:
+    #     checkbox_candidates = [
+    #         ".//label[contains(@class,'el-checkbox') or contains(@class,'checkbox')]",
+    #         ".//*[contains(@class,'el-checkbox__inner')]",
+    #         ".//input[@type='checkbox']/ancestor::*[self::label or self::span or self::div][1]",
+    #         ".//td[1]//*[contains(@class,'checkbox')]",
+    #         ".//td[1]",
+    #     ]
+    #     for xpath in checkbox_candidates:
+    #         try:
+    #             elements = row.find_elements(By.XPATH, xpath)
+    #         except Exception:  # noqa: BLE001
+    #             elements = []
+    #         for element in elements:
+    #             if not element.is_displayed():
+    #                 continue
+    #             try:
+    #                 self._safe_click(element)
+    #                 time.sleep(0.3)
+    #                 return
+    #             except Exception:  # noqa: BLE001
+    #                 continue
+    #     # Last fallback: click the row itself (some tables toggle selection by row click).
+    #     try:
+    #         self._safe_click(row)
+    #         time.sleep(0.3)
+    #         return
+    #     except Exception as exc:  # noqa: BLE001
+    #         raise RuntimeError("Row checkbox not found.") from exc
 
     def select_row(self, row) -> None:
-        checkbox_candidates = [
-            ".//label[contains(@class,'el-checkbox') or contains(@class,'checkbox')]",
-            ".//*[contains(@class,'el-checkbox__inner')]",
-            ".//input[@type='checkbox']/ancestor::*[self::label or self::span or self::div][1]",
-            ".//td[1]//*[contains(@class,'checkbox')]",
-            ".//td[1]",
-        ]
-        for xpath in checkbox_candidates:
-            try:
-                elements = row.find_elements(By.XPATH, xpath)
-            except Exception:  # noqa: BLE001
-                elements = []
-            for element in elements:
-                if not element.is_displayed():
-                    continue
-                try:
-                    self._safe_click(element)
+        """
+        针对 VXE 表格，通过 rowid 和 colid 精准定位复选框，未选中时点击选中
+        :param row: 传入的 tr 元素 (已定位好的行)
+        """
+        # 精准匹配你提供的 HTML 结构：col_2 列下的 未选中复选框 span
+        
+        try:
+            # 查找【未选中状态】的复选框元素
+            tds = row.find_elements(By.XPATH, "//td[@colid='col_2']")
+            for td in tds:
+                unchecked_boxes = td.find_elements(By.XPATH,".//span[contains(@class, 'vxe-checkbox--unchecked-icon')]")
+                if len(unchecked_boxes) == 1:
+                    self._safe_click(unchecked_boxes[0])
                     time.sleep(0.3)
                     return
-                except Exception:  # noqa: BLE001
-                    continue
-        # Last fallback: click the row itself (some tables toggle selection by row click).
+                
+        except Exception:
+            # 找不到未选中元素 → 已经是选中状态，直接返回
+            pass
+
+        # 兜底：如果已经选中，什么都不做
         try:
-            self._safe_click(row)
-            time.sleep(0.3)
+            # 可选：验证是否已选中（可删除）
+            checked_xpath = ".//td[@colid='col_2']//span[contains(@class, 'vxe-checkbox--checked-icon')]"
+            row.find_element(By.XPATH, checked_xpath)
             return
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError("Row checkbox not found.") from exc
+        except Exception as exc:
+            raise RuntimeError("Row checkbox not found and cannot be selected.") from exc
 
     def open_assign_shop_dialog(self) -> None:
+        print("[DEBUG] clicking 批量按钮")
         self._click_first([
             # User-confirmed DOM: <span class="el-tooltip text-wrap"><span>批量</span>...</span>
             (By.XPATH, "//span[contains(@class,'el-tooltip') and contains(@class,'text-wrap')][.//span[normalize-space()='批量']]"),
@@ -173,19 +219,23 @@ class LingxingShopAssigner:
             (By.XPATH, "//span[normalize-space()='批量']/ancestor::button[1]"),
         ], "批量按钮")
         self._pause(1.0)
+        print("[DEBUG] clicking 分配店铺菜单")
         self._click_first([
             # User-confirmed DOM: <div class="el-tooltip"><span>分配店铺</span></div>
             (By.XPATH, "//div[contains(@class,'el-tooltip')][.//span[normalize-space()='分配店铺']]"),
             (By.XPATH, "//span[normalize-space()='分配店铺']/ancestor::div[contains(@class,'el-tooltip')][1]"),
             (By.XPATH, "//*[self::li or self::a or self::span][normalize-space()='分配店铺']"),
         ], "分配店铺菜单")
+        print("[DEBUG] waiting for dialog...")
         self.wait.until(
             EC.presence_of_element_located((By.XPATH, "//div[contains(@class,'dialog') or @role='dialog']"))
         )
+        print("[DEBUG] waiting for platform-item...")
         self.wait.until(
             EC.presence_of_element_located((By.XPATH, "//div[contains(@class,'platform-item')]"))
         )
         self._pause(1.2)
+        print("[DEBUG] dialog ready")
 
     def choose_ebay_tab(self) -> None:
         # User-confirmed DOM:
@@ -243,6 +293,19 @@ class LingxingShopAssigner:
                     break
         # Avoid operating too early: wait until shop list appears and stabilizes.
         self._wait_shop_list_ready(timeout_seconds=15)
+
+    def choose_override_option(self) -> None:
+        dialog = self._find_assign_dialog()
+        selectors = [
+            (By.XPATH, ".//input[@type='radio' and @value='覆盖当前']"),
+            (By.XPATH, ".//span[contains(@class,'el-radio__input') and .//input[@value='覆盖当前']]"),
+            (By.XPATH, ".//label[contains(@class,'el-radio') and .//input[@value='覆盖当前']]"),
+        ]
+        element = self._find_first_visible_in_root(dialog, selectors)
+        if element is None:
+            raise RuntimeError("覆盖选项(radio[value='覆盖当前'])未找到")
+        self._safe_click(element)
+        self._pause(0.5)
 
     def select_authorized_shops(self, shops: List[str]) -> None:
         for shop in shops:
