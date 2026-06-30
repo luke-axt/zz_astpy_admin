@@ -148,7 +148,8 @@ WHERE user_name=%s;
         print(
             f"""
 {user.get_cnname()} 用户创建成功！
-系统登录地址：http://192.168.1.60/login?redirect=/index
+云小拓系统登录地址：http://192.168.1.60/login?redirect=/index
+领星系统登录地址：https://auxito.lingxing.com/login
 用户编号：{user.get_user_code()}
 用户密码：{user_password}
 """

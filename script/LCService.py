@@ -5,7 +5,7 @@ import random
 import requests
 from pypinyin import pinyin, Style
 
-from 运维管理.LCMapper import LCMapper
+from zzlc.script.LCMapper import LCMapper
 from utils.ConfigUtils import ConfigUtils
 
 
