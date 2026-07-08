@@ -1,3 +1,6 @@
+import sys
+
+sys.path.append(r"D:\app\astpy")
 import traceback
 
 from admin.service.DBcore import DBcore
@@ -15,11 +18,13 @@ dbs = DBcore(('192.168.1.79'
 
 
 oldskustr = """
-DY-ATO-JS02-AUTOONE-BB-B
+T10-18H-W2-A
+T10-2F-BLACK-W2
 """
 
 newskustr="""
-DY-ATO-JS02-AUTOONE-BB-C
+T10-18H-W2-B
+T10-2F-BLACK-W2-A
 """
 
 old_sku_list = oldskustr.split('\n')

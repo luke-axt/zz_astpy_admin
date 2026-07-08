@@ -99,3 +99,7 @@ cd /etc/init.d
 ./redis-server stop
 ./redis-server start
 
+## 添加启动环境变量 2026-7-8
+sudo vi /etc/systemd/system/astdc.service
+sudo systemctl daemon-reload
+sudo systemctl restart astdc

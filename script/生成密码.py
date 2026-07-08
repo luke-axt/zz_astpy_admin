@@ -1,7 +1,11 @@
-from 运维管理.LCService import LCService
+import os
+import sys
+
+sys.path.append(r"D:\app\astpy")
+from zzlc.script.LCService import LCService
 
 astadmin = LCService()
 
-for i in range(1,10):
-    print(f'生成的密码：  {astadmin.genPasswd()}')
+for i in range(1,14):
+    print(f'{astadmin.genPasswd()}')
 # print(f'生成的appsecret：  {astadmin.genAstAppsecret()}')

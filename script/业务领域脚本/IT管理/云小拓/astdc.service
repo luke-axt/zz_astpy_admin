@@ -1,0 +1,13 @@
+# sudo vi /etc/systemd/system/astdc.service
+# sudo systemctl daemon-reload
+# sudo systemctl restart astdc
+
+[Unit]
+Description=My Java Application
+
+[Service]
+ExecStart=/usr/local/java/jdk1.8.0_381/bin/java -jar -Dspring.profiles.active=prod -Djasypt.encryptor.password=AST2026.Jh3bKmN29t -Xms27g -Xmx27g -XX:NewRatio=2 -XX:+UseG1GC -XX:+UseCompressedOops -Dfile.encoding=UTF-8 /app/datacenter/ast.jar
+WorkingDirectory=/app/datacenter
+
+[Install]
+WantedBy=multi-user.target
