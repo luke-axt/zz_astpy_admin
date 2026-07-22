@@ -4,6 +4,7 @@ from admin.service.DBcore import DBcore
 from common.BaseObj import AdminBase
 from common.ResultObj import ResultObj
 from utils.LogUtils import LogUtils
+from zzlc.script.业务领域脚本.企业微信.MyQywxService import MyQywxService
 
 
 class MyAdminBase(AdminBase):
@@ -18,6 +19,7 @@ class MyAdminBase(AdminBase):
                 )))
         self.logger = LogUtils.get_logger(jobname)
         self.smb62_info = {'server': '192.168.1.62', 'username': 'zhengcilin', 'password': 'gAAAAABorSObQBLzfTR5PnGOlQGATacMGgx16nNPcOmi6UkmzhSTwyDGUkbpev8C4Z8T-jhdV6Xr1Npl9QS8A1kELHsaUAkqdw=='}
+        self.qywx = MyQywxService()
 
     def run(self, **kwargs) -> ResultObj:
         """
@@ -26,8 +28,11 @@ class MyAdminBase(AdminBase):
         """
         try:
             res = self.action(**kwargs)
+            self.logger.info(f"运行无异常，结束")
         except:
-            res = ResultObj.error(ResultObj.FATAL_ERROR,f"{traceback.format_exc()}")
+            errmsg = f'运行异常：{traceback.format_exc()}'
+            self.logger.error(f"{errmsg}")
+            res = ResultObj.error(ResultObj.FATAL_ERROR,errmsg)
         return res
 
     def action(self, **kwargs) -> ResultObj:

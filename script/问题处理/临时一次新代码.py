@@ -66,7 +66,7 @@ select d.user_code as qywxusercode
  where s.user_name ='{ucode}'
 """
             qywxusercode = self.dbs.select(sql)['qywxusercode'][0]
-            qywx.api_sent_msg_to_user(msg=msg,userid=qywxusercode)
+            qywx.send_app_msg(msg=msg,userid=qywxusercode)
             pass
             
 

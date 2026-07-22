@@ -1,113 +1,176 @@
-import json
 
+import traceback
 import bcrypt
-import requests
-
-from admin.service.DBcore import DBcore
-from admin.service.adminconfig import AdminConfig
 from utils.StringUtils import StringUtils
 import random
-
 from zzlc.script.MyAdmin import MyAdminBase
 
+class UserCore(MyAdminBase):
+    """
+    创建用户及分配角色
+    """
 
-class User:
-    def __init__(self, cnname, phone, email,dept_id):
-        self.cnname = cnname
-        self.phone = phone
-        self.email = email
-        self.user_id = None
-        self.passwd = None
-        self.user_code = None
-        self.set_user_code()
-        self.dept_id = dept_id
-        if self.email is None:
-            self.email = (self.user_code if self.user_code is not None else '') + '@sztyqcypyxgs.wecom.work'
+    def __init__(self):
+        super().__init__('用户管理')
 
-    def get_dept_id(self):
-        return self.dept_id
+    def create_user_and_assign_role(self,user_name,dept_name_yxt,role_name_astcli=None):
+        try:
+            self.create_ry_user_action(user_name,dept_name_yxt,role_name_astcli)
+            self.logger.info(f"用户名：{user_name} 创建用户及权限分配运行结束")
+        except:
+            self.logger.error(f"用户名：{user_name} 创建用户及权限分配失败。{traceback.format_exc()}")
+            return 
 
-    def set_user_code(self):
-        pinyinname = StringUtils.parse_hanzi_to_pinyin(self.cnname)
-        self.user_code = pinyinname
+    def create_ry_user_action(self,user_name,dept_name_yxt,role_name_astcli=None):
+        """
+        创建云小拓用户，启用小拓桌面用户，分配小拓桌面角色
+        
+        :param user_name: Description
+        :param dept_name_yxt: Description
+        :param role_name_astcli: Description
+        """
+        self.logger.info(f"开始运行用户创建及权限分配：user_name：{user_name}，dept_name_yxt：{dept_name_yxt}，role_name_astcli：{role_name_astcli}")
+        # 检查部门名称是否正确
+        dept_id = self.check_dept_name(dept_name_yxt)
+        # 检查角色名称是否正确
+        role_id = self.check_role_name_astcli(role_name_astcli)
+        # 检查是否存在重名
+        qw_user_code,yxt_user_id = self.check_username(user_name)
+        # 如果尚未创建云小拓用户，则创建
+        if yxt_user_id is None:
+            yxt_user_id, user_code = self.create_ry_user2(user_name,dept_id,qw_user_code)
+        # 启用小拓桌面账户及分配角色
+        self.valid_user_xt_desktop(user_name,yxt_user_id,qw_user_code,role_id)
+
+
+    def check_role_name_astcli(self,role_name_astcli):
+        """
+        Docstring for check_role_name_astcli
+        
+        :param self: Description
+        :param role_name_astcli: Description
+        """
+        if role_name_astcli is None:
+            return None
+        df = self.dbs.select("select role_id from astdc.cli_role where role_name = %s",(role_name_astcli,))
+        if len(df) != 1:
+            raise RuntimeError(f"role_name_astcli： {role_name_astcli} 查询角色名称异常，请检查。查询数量：{len(df)}")
+        return df['role_id'][0]
+        
+    def valid_user_xt_desktop(self,user_name,yxt_user_id,qw_user_code,role_id):
+        """
+        Docstring for valid_user_xt_desktop
+        
+        :param self: Description
+        :param user_name: Description
+        :param yxt_user_id: Description
+        :param role_id: Description
+        """
+        df = self.dbs.select("select cli_user_id,status,ry_user_id from astdc.cli_user t where t.cn_name = %s",(user_name,))
+        if len(df) == 0:
+            self.qywx.send_app_msg(f'你好，正在给你开通小拓桌面权限。检测到你尚未初始化导致无法开通。请先安装小拓桌面，然后使用自己的中文名登录，完成这个动作之后联系郑词林继续开通权限。安装包地址：\\\\192.168.1.80\\工具软件\\办公软件\\小拓桌面\\install.exe',qw_user_code)
+            raise RuntimeError(f"用户名：{user_name} 未初始化小拓桌面，无法授权")
+        if len(df) > 1:
+            raise RuntimeError(f"用户名：{user_name} 小拓桌面存在多个同名用户，请先清理后再继续")
+        if df['ry_user_id'][0] is None or df['status'][0] is None or df['status'][0] == 'N':
+            affect_rows = self.dbs.update("update astdc.cli_user t set t.ry_user_id = %s, t.status = 'Y' where t.cli_user_id = %s;",(yxt_user_id, df['cli_user_id'][0]))
+            self.logger.info(f"用户名：{user_name} 启用用户成功 affect_rows:{affect_rows}")
+        else:
+            self.logger.info(f"用户名：{user_name} 用户已启用，本次未处理。")
+        
+        if role_id is not None:
+            df = self.dbs.select("select role_id from astdc.cli_user_role t where t.user_id = %s and t.role_id = %s ",(yxt_user_id,role_id))
+            if len(df) == 0:
+                self.dbs.insert("INSERT INTO astdc.cli_user_role (user_id, role_id) values (%s,%s)",(yxt_user_id,role_id))
+                self.logger.info(f"用户名：{user_name} 分配角色成功")
+                self.qywx.send_app_msg(f'{user_name}， 你好，小拓桌面权限开通成功。',qw_user_code)
+            
+            else:
+                self.logger.info(f"用户名：{user_name} 已分配角色，本次未处理。")
+
+
+    def check_username(self,user_name):
+        """
+        检查企微是否重名
+        检查云小拓是否已经创建用户
+        返回，is_qw_ok,qw_user_code,yxt_user_id,is_yxt_ok
+        
+        :param self: Description
+        :param user_name: Description
+        """
+        qw_user_code = None
+        yxt_user_id = None
+        keyword = f"%{user_name}"
+        df = self.dbs.select("select q.userid as qw_user_code from astdc.qywx_user_info q where q.name like %s",(keyword,))
+        if len(df) == 0:
+            raise RuntimeError(f"用户名：{user_name}，企微用户表不存在此用户，请检查或者重新采集企微用户表（作业id：286）")
+        if len(df) > 1:
+            raise RuntimeError(f"用户名：{user_name}，在企微表重名，请检查，如确实重名，只能人工处理。")
+        qw_user_code = df['qw_user_code'][0]
+        df = self.dbs.select("select q.user_id  from astdc.sys_user q where q.nick_name = %s",(user_name,))
+        if len(df) > 1:
+            raise RuntimeError(f"用户名：{user_name}，云小拓已存在2个以上的用户，请检查")
+        if len(df) == 1:
+            yxt_user_id = df['user_id'][0]
+        return qw_user_code,yxt_user_id
+    
+    def check_dept_name(self,dept_name):
+        """
+        检查部门名称，成功返回部门id
+        
+        :param self: Description
+        :param dept_name: Description
+        """
+        df = self.dbs.select("select dept_id from astdc.sys_dept where dept_name = %s",(dept_name,))
+        if len(df) != 1:
+            raise RuntimeError(f"dept_name： {dept_name} 查不到该部门名称，请检查")
+        return df['dept_id'][0]
+    
+    def generate_user_code(self,user_name):
+        pinyinname = StringUtils.parse_hanzi_to_pinyin(user_name)
         for i in range(0,3):
             j = random.randint(0, 9)
-            self.user_code += str(j)
-        return
+            pinyinname += str(j)
+        return pinyinname
+    
 
-    def get_passwd(self):
-        return self.passwd
-
-    def set_passwd(self, passwd):
-        self.passwd = passwd
-
-    def get_user_id(self):
-        return self.user_id
-
-    def set_user_id(self, user_id):
-        self.user_id = user_id
-
-    def get_user_code(self):
-        return self.user_code
-    def get_cnname(self):
-        return self.cnname
-
-    def set_cnname(self, cnname):
-        self.cnname = cnname
-
-    def get_phone(self):
-        return self.phone
-
-    def set_phone(self, phone):
-        self.phone = phone
-
-    def get_email(self):
-        return self.email
-
-    def set_email(self, email):
-        self.email = email
-
-
-
-class UserCore(MyAdminBase):
-
-    def __init__(self,cnname='', phone='', email='',deptname=''):
-        super().__init__('用户管理')
-        self.mapper = UserMapper()
-        self.cnname = cnname
-        self.phone = phone
-        self.email = email
-        self.deptid = self.get_dept_id(deptname)
-        self.user_id = None
-
-    def test(self):
-        sql = """
-update tmp.t_zcl_2col set c1 = 'aa' where id = 1;
-update tmp.t_zcl_2col set c1 = 'bb' where id = 2;
+    def create_ry_user2(self,user_name,dept_id,qw_user_code):
         """
-        self.dbs.exec_many_sql_new(sql)
-
-    def get_dept_id(self,dept_name):
-        df = self.mapper.get_dept_id(dept_name)
-        if len(df) == 0:
-            print(f"{dept_name} 查不到该部门名称。请输入一级部门：产品、运营、供应链、IT、人力")
-            return 0
-        else:
-            return df['dept_id'][0]
-
-    def get_user_id(self,user_code):
-        df = self.mapper.select_user(user_code)
-        if len(df) == 0:
-            raise RuntimeError("查询用户信息失败。前置步骤插入新用户失败。")
-
-        return df['user_id'][0]
-
-    def is_cnname_exists(self):
+        创建云小拓用户，返回用户id和用户编号，自动配置企微用户映射
+        
+        :param self: Description
+        :param user_name: Description
+        :param dept_id: Description
+        :param qw_user_code: Description
         """
-        检查用户的中文名是否存在
+        
+        user_password = StringUtils.gen_random_str(10)
+        print(user_password)
+        user_password_encrypt = self.encrypt_password(user_password)
+        user_code = self.generate_user_code(user_name)
+        sql = f"""
+INSERT INTO astdc.sys_user (dept_id, user_name, nick_name, user_type, email, phonenumber, sex, avatar, password, status, del_flag, login_ip, login_date, create_by, create_time, update_by, update_time, remark)
+VALUES( {dept_id}, '{user_code}',   '{user_name}', '00', '',  '', '', '', '{user_password_encrypt}', '0', '0', '127.0.0.1', sysdate(), 'admin', sysdate(), '', null, '');
         """
-        sql = "select count(*) as cnt from astdc.sys_user t where t.nick_name = %s"
-        return self.dbs.select(sql,(self.cnname,))['cnt'][0] > 0
+        self.dbs.insert(sql)
+        self.logger.info(f"创建云小拓用户。")
+        print(
+            f"""
+{user_name} 用户创建成功！
+云小拓系统登录地址：http://192.168.1.60/login?redirect=/index
+领星系统登录地址：https://auxito.lingxing.com/login   # 需要单独开通权限，如需要，找主管申请。
+用户编号：{user_code}
+用户密码：{user_password}
+"""
+        )
+
+        user_id_ry = self.get_user_id(user_code)
+        self.dbs.insert(f"insert into astdc.sys_user_role values(%s,  100)",(user_id_ry,))
+        self.logger.info(f"分配云小拓基础权限。")
+
+        self.dbs.insert(f"INSERT INTO astdc.dc_user_map (user_type, user_code, ry_user_id, ry_user_name) VALUES('qywx', %s, %s, %s);",(qw_user_code,user_id_ry,user_name))
+        self.logger.info(f"插入企微云小拓用户映射。")
+        return user_id_ry, user_code
 
     def modify_user_passwd(self,usercode):
         """
@@ -130,31 +193,6 @@ WHERE user_name=%s;
         else:
             print(f"""更新{usercode} 失败。{res}！""")
 
-    def create_ry_user(self):
-        if self.is_cnname_exists():
-            print(f"{self.cnname} 已经存在，此用户创建失败，请检查。")
-            return
-        user = User(self.cnname, self.phone, self.email,self.deptid)
-        user_password = StringUtils.gen_random_str(10)
-        user.set_passwd(self.encrypt_password(user_password))
-        user.set_email(user.get_user_code() + '@no.com' if user.get_email() is None or '@no.com' in user.get_email() else user.get_email())
-        self.mapper.insert_ry_user(user)
-        user.set_user_id(self.get_user_id(user.get_user_code()))
-        self.mapper.insert_ry_common_role(user)
-
-
-        # newPassword = self.updatePasswdByUname(user)  # 取消自动修改密码的方法
-        # print(f"需人工修改用户密码：{newPassword}")
-        print(
-            f"""
-{user.get_cnname()} 用户创建成功！
-云小拓系统登录地址：http://192.168.1.60/login?redirect=/index
-领星系统登录地址：https://auxito.lingxing.com/login
-用户编号：{user.get_user_code()}
-用户密码：{user_password}
-"""
-        )
-
     def encrypt_password(self, password: str, strength: int = 10) -> str:
         """
         与java一样的加密逻辑，用此方法加密，java一样可以验证
@@ -175,73 +213,3 @@ WHERE user_name=%s;
         # 返回字符串（格式如 $2b$10$...）
         return hashed.decode('utf-8')
 
-    def astAuth(self):
-        api_url = "http://192.168.1.60:8080/test/user/login"
-        headers = {
-            "Content-Type": "application/json",
-            "accept": "*/*"
-        }
-        param = {
-            "username": 'zhengcilin791',
-            "password": 'U8.Ytr53'
-        }
-        response = requests.post(api_url, json=param, headers=headers)
-        jsondata = json.loads(response.text)
-        if jsondata["code"] == 200:
-            return jsondata["token"]
-        else:
-            raise RuntimeError(f"登录使用到 zhengcilin 这个用户，密码不正确。" + response.text)
-
-    def updatePasswdByUname(self, user:User):
-
-        token = self.astAuth()
-        token = "Bearer " + token
-        # API 的 URL
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": token,
-            "accept": "*/*"
-        }
-        # 要传递的参数
-        newPassword = StringUtils.gen_random_str(8)
-        api_url = "http://192.168.1.60:8080/system/user/profile/updatePwd22?userName=" + user.get_user_code() + "&newPassword=" + newPassword
-        # 发送 POST 请求
-        response = requests.put(api_url, headers=headers)
-        jsondata = json.loads(response.text)
-        if jsondata["code"] == 200:
-            # print("用户：" + user_code + " 修改密码成功！新密码： " + newPassword)
-            return newPassword
-        else:
-            raise RuntimeError(response.text)
-
-class UserMapper(MyAdminBase):
-    def __init__(self):
-        super().__init__('用户管理数据操作')
-
-    def insert_ry_user(self, user:User):
-        sql = f"""
-INSERT INTO astdc.sys_user (dept_id, user_name, nick_name, user_type, email, phonenumber, sex, avatar, password, status, del_flag, login_ip, login_date, create_by, create_time, update_by, update_time, remark)
-VALUES( {user.get_dept_id()}, '{user.get_user_code()}',    '{user.get_cnname()}', '00', '{user.get_email()}',  '{user.get_phone()}', '', '', '{user.get_passwd()}', '0', '0', '127.0.0.1', sysdate(), 'admin', sysdate(), '', null, '');
-        """
-        return self.dbs.insert(sql)
-
-    def insert_ry_common_role(self,user:User):
-        sql = f"insert into astdc.sys_user_role values(%s,  100)"
-        return self.dbs.insert(sql,(user.get_user_id()))
-
-    def get_dept_id(self,dept_name):
-        sql = f"""
-        SELECT dept_id, parent_id, ancestors, dept_name, order_num, leader, phone, email, status, del_flag, create_by, create_time, update_by, update_time
-FROM astdc.sys_dept
-where  dept_name = %s
-        """
-        return self.dbs.select(sql,(dept_name,))
-
-    def select_user(self,user_code):
-        sql = f"""
-        SELECT user_id, dept_id, user_name, nick_name, user_type, email, phonenumber, sex, avatar, password, status, del_flag, login_ip, login_date, create_by, create_time, update_by, update_time, remark
-FROM astdc.sys_user
-where user_name = %s
-        """
-        return self.dbs.select(sql,(user_code,))

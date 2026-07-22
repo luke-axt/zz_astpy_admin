@@ -4,14 +4,12 @@ from common.ResultObj import ResultObj
 from dwd.DwService import DwService
 from utils.dateutil import DatePack
 from zzlc.script.MyAdmin import MyAdminBase
-from zzlc.script.业务领域脚本.企业微信.MyQywxService import MyQywxService
 
 
 class RunDataHis(MyAdminBase):
 
     def __init__(self,jobname='重跑数仓历史数据'):
         super().__init__(jobname)
-        self.qywx = MyQywxService()
 
     def run_tmp(self,**kwargs):
         dt = '20260204'
@@ -65,9 +63,9 @@ WHERE dt=%s;
                 break
 
         if res.is_fail():
-            self.qywx.api_sent_msg_to_user(f"，跑批异常，请及时处理。RunDataHis.run_sale_idx，{msg_text}")
+            self.qywx.send_app_msg(f"，跑批异常，请及时处理。RunDataHis.run_sale_idx，{msg_text}")
         else:
-            self.qywx.api_sent_msg_to_user(f"正常完成：RunDataHis.run_sale_idx，{msg_text}")
+            self.qywx.send_app_msg(f"正常完成：RunDataHis.run_sale_idx，{msg_text}")
 
     def run_dml_sale(self, taskname, start_dt, stop_dt):
         """
@@ -108,6 +106,6 @@ WHERE dt=%s;
                                             DatePack.YYYY_MM_DD)
 
         if res.is_fail():
-            self.qywx.api_sent_msg_to_user(f"，跑批异常，请及时处理。RunDataHis：{msg_text}")
+            self.qywx.send_app_msg(f"，跑批异常，请及时处理。RunDataHis：{msg_text}")
         else:
-            self.qywx.api_sent_msg_to_user(f"正常完成：RunDataHis：{msg_text}")
+            self.qywx.send_app_msg(f"正常完成：RunDataHis：{msg_text}")
